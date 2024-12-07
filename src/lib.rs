@@ -1,13 +1,16 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
 #![feature(custom_test_frameworks)]
+#![feature(abi_x86_interrupt)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main="test_main"]
 
-use core::{arch::asm, panic::PanicInfo};
+use core::panic::PanicInfo;
 
 pub mod vga_buffer;
 pub mod serial;
+pub mod interrupts;
+extern crate bit_field;
 
 pub trait Testable {
     fn run(&self) -> ();   
@@ -51,6 +54,11 @@ pub fn test_panic_handler(_info: &PanicInfo) -> ! {
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     test_main();
+
+    interrupts::init();
+
+    divide_by_zero();
+
     loop {}
 }
 
@@ -67,5 +75,18 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     unsafe {
         let mut port = Port::new(0xf4);
         port.write(exit_code as u32);
+    }
+}
+
+pub fn init() {
+    interrupts::init();
+}
+
+pub fn divide_by_zero() {
+    unsafe {
+        core::arch::asm!("mov dx, 0; div dx",
+            out("ax") _,
+        out("dx") _,
+        options(raw))
     }
 }

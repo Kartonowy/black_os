@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
-#![test_runner(imsorry::test_runner)]
+#![test_runner(black_os::test_runner)]
 #![reexport_test_harness_main="test_main"]
 
 use core::panic::PanicInfo;
@@ -15,10 +15,10 @@ pub extern "C" fn _start() -> ! {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    imsorry::test_panic_handler(info);
+    black_os::test_panic_handler(info);
 }
 
-use imsorry::println;
+use black_os::println;
 
 #[test_case]
 fn test_println() {
