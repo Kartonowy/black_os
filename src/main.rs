@@ -6,6 +6,7 @@
 
 use black_os::divide_by_zero;
 use black_os::println;
+use x86_64::instructions::interrupts::int3;
 use core::panic::PanicInfo;
 
 #[no_mangle]
@@ -13,8 +14,7 @@ pub extern "C" fn _start() -> ! {
     println!("Hello world");
     black_os::init();
 
-/*     unsafe { *(0xdeadbeef as *mut u8) = 42 } */
-    divide_by_zero();
+    unsafe { *(0xdeadbeef as *mut u8) = 42 }
 
     #[cfg(test)]
     test_main();
