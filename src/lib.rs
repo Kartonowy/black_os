@@ -3,30 +3,29 @@
 #![feature(custom_test_frameworks)]
 #![feature(abi_x86_interrupt)]
 #![test_runner(crate::test_runner)]
-#![reexport_test_harness_main="test_main"]
+#![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
 
-pub mod vga_buffer;
-pub mod serial;
 pub mod interrupts;
+pub mod serial;
+pub mod vga_buffer;
 extern crate bit_field;
 
 pub trait Testable {
-    fn run(&self) -> ();   
+    fn run(&self) -> ();
 }
 
 impl<T> Testable for T
 where
     T: Fn(),
-    {
-        fn run(&self) -> () {
-            serial_print!("{}...\t", core::any::type_name::<T>());
-            self();
-            serial_println!("[ok]");
-        }
+{
+    fn run(&self) -> () {
+        serial_print!("{}...\t", core::any::type_name::<T>());
+        self();
+        serial_println!("[ok]");
     }
-
+}
 
 pub fn test_runner(tests: &[&dyn Testable]) {
     serial_println!("Running {} tests", tests.len());
@@ -35,7 +34,6 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     }
     exit_qemu(QemuExitCode::Success);
 }
-
 
 #[cfg(test)]
 #[panic_handler]
@@ -66,9 +64,8 @@ pub extern "C" fn _start() -> ! {
 #[repr(u32)]
 pub enum QemuExitCode {
     Success = 0x10,
-    Failed = 0x11
+    Failed = 0x11,
 }
-
 
 pub fn exit_qemu(exit_code: QemuExitCode) {
     use x86_64::instructions::port::Port;

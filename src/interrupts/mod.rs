@@ -1,3 +1,4 @@
+use idt::HandlerFunc;
 use lazy_static::lazy_static;
 use x86_64::structures::idt::InterruptStackFrame;
 
@@ -10,19 +11,17 @@ pub fn init() {
 }
 
 lazy_static! {
-
     static ref IDT: idt::Idt = {
         let mut idt = idt::Idt::new();
-
-        idt.set_handler(idt::ExceptionType::DivisionError, divide_by_zero_handler);
-        idt.set_handler(idt::ExceptionType::Breakpoint, breakpoint_handler);
-        idt.set_handler(idt::ExceptionType::DoubleFault, double_fault_handler);
+        unsafe {
+            idt.Breakpoint.set_handler(breakpoint_handler());
+        }
 
         idt
     };
 }
 
-extern "C" fn divide_by_zero_handler() -> ! {
+extern "C" fn divide_by_zero_handler(stack_frame: InterruptStackFrame) -> ! {
     println!("EXCEPTION: DIVIDE BY ZERO");
     loop {}
 }

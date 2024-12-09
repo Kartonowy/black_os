@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+use core::marker::PhantomData;
+
+
 use x86_64::instructions::segmentation;
 use x86_64::registers::segmentation::Segment;
 use x86_64::structures::gdt::SegmentSelector;
@@ -33,44 +37,87 @@ pub enum ExceptionType {
     SecurityException = 0x1e,
 }
 
-#[repr(C, packed)]
-pub struct Idt([Entry; 16]);
+#[allow(non_snake_case)]
+#[repr(C)]
+#[repr(align(16))]
+pub struct Idt {
+    pub DivisionError: Entry<HandlerFunc>,
+    pub Debug: Entry<HandlerFunc>,
+    pub NonMaskableInterrupt: Entry<HandlerFunc>,
+    pub Breakpoint: Entry<HandlerFunc>,
+    pub Overflow: Entry<HandlerFunc>,
+    pub BoundRangeExceeded: Entry<HandlerFunc>,
+    pub InvalidOpcode: Entry<HandlerFunc>,
+    pub DeviceNotAvailable: Entry<HandlerFunc>,
+    pub DoubleFault: Entry<HandlerFuncWithErr>,
+    pub InvalidTSS: Entry<HandlerFuncWithErr>,
+    pub SegmentNotPresent: Entry<HandlerFuncWithErr>,
+    pub StackSegmentFault: Entry<HandlerFuncWithErr>,
+    pub GeneralProtectionFault: Entry<HandlerFuncWithErr>,
+    pub PageFault: Entry<HandlerFuncWithErr>,
+    pub X87FloatingPointException: Entry<HandlerFunc>,
+    pub AlignmentCheck: Entry<HandlerFuncWithErr>,
+    pub MachineCheck: Entry<HandlerFunc>,
+    pub SIMDFloatingPointException: Entry<HandlerFunc>,
+    pub VirtualizationException: Entry<HandlerFunc>,
+    pub ControlProtectionException: Entry<HandlerFuncWithErr>,
+    pub HypervisorInjectionException: Entry<HandlerFunc>,
+    pub VMMCommunicationException: Entry<HandlerFuncWithErr>,
+    pub SecurityException: Entry<HandlerFuncWithErr>,
+}
 
 impl Idt {
     pub fn new() -> Idt {
-        Idt([Entry::missing(); 16])
-    }
-
-    pub fn set_handler(&mut self, entry: ExceptionType, handler: HandlerFunc) -> &mut EntryOptions {
-        self.0[entry as usize] = Entry::new(segmentation::CS::get_reg(), handler);
-        let options_ptr = core::ptr::addr_of_mut!(self.0[entry as usize].options);
-        unsafe {
-            &mut *options_ptr 
+        Idt {
+            DivisionError: Entry::missing(),
+            Debug: Entry::missing(),
+            NonMaskableInterrupt: Entry::missing(),
+            Breakpoint: Entry::missing(),
+            Overflow: Entry::missing(),
+            BoundRangeExceeded: Entry::missing(),
+            InvalidOpcode: Entry::missing(),
+            DeviceNotAvailable: Entry::missing(),
+            DoubleFault: Entry::missing(),
+            InvalidTSS: Entry::missing(),
+            SegmentNotPresent: Entry::missing(),
+            StackSegmentFault: Entry::missing(),
+            GeneralProtectionFault: Entry::missing(),
+            PageFault: Entry::missing(),
+            X87FloatingPointException: Entry::missing(),
+            AlignmentCheck: Entry::missing(),
+            MachineCheck: Entry::missing(),
+            SIMDFloatingPointException: Entry::missing(),
+            VirtualizationException: Entry::missing(),
+            ControlProtectionException: Entry::missing(),
+            HypervisorInjectionException: Entry::missing(),
+            VMMCommunicationException: Entry::missing(),
+            SecurityException: Entry::missing(),
         }
     }
+
     pub fn load(&'static self) {
-        use x86_64::instructions::tables::{DescriptorTablePointer, lidt};
         use core::mem::size_of;
+        use x86_64::instructions::tables::{lidt, DescriptorTablePointer};
 
         let ptr = DescriptorTablePointer {
             base: x86_64::VirtAddr::new(self as *const _ as u64),
-            limit: (size_of::<Self>() - 1) as u16
+            limit: (size_of::<Self>() - 1) as u16,
         };
-        
+
         unsafe { lidt(&ptr) };
     }
 }
 
-
 #[derive(Debug, Clone, Copy)]
-#[repr(C, packed)]
-pub struct Entry {
+#[repr(C)]
+pub struct Entry<F> {
     pointer_low: u16,
     gdt_selector: SegmentSelector,
     options: EntryOptions,
     pointer_middle: u16,
     pointer_high: u32,
-    reserved: u32
+    reserved: u32,
+    phantom: PhantomData<F>
 }
 
 use bit_field::BitField;
@@ -112,30 +159,69 @@ impl EntryOptions {
     }
 }
 
-impl Entry {
+impl<F> Entry<F> {
     fn new(gdt_selector: SegmentSelector, handler: HandlerFunc) -> Self {
         let pointer = handler as u64;
         Entry {
             gdt_selector,
             pointer_low: pointer as u16,
-            pointer_middle: (pointer >> 16 ) as u16,
-            pointer_high: (pointer >> 32 ) as u32,
+            pointer_middle: (pointer >> 16) as u16,
+            pointer_high: (pointer >> 32) as u32,
             options: EntryOptions::new(),
-            reserved: 0
+            reserved: 0,
+            phantom: PhantomData
         }
     }
     fn missing() -> Self {
         Entry {
             gdt_selector: SegmentSelector::new(0, PrivilegeLevel::Ring0),
-                pointer_low: 0,
-                pointer_middle: 0,
-                pointer_high: 0,
-                options: EntryOptions::minimal(),
-                reserved: 0,
+            pointer_low: 0,
+            pointer_middle: 0,
+            pointer_high: 0,
+            options: EntryOptions::minimal(),
+            reserved: 0,
+            phantom: PhantomData
         }
+    }
+
+    pub unsafe fn set_handler(&mut self, handler: F)  -> &mut EntryOptions 
+        where F: HandlerType {
+        let address = handler.to_virt_addr().0;
+
+        self.pointer_low = address as u16;
+        self.pointer_middle = (address >> 16) as u16;
+        self.pointer_high = (address >> 32) as u32;
+
+        self.options = EntryOptions::minimal();
+        self.gdt_selector = segmentation::CS::get_reg();
+
+        &mut self.options
     }
 }
 
-pub type HandlerFunc = extern "C" fn() -> !;
-pub type HandlerFuncWithErr = extern "C" fn(InterruptStackFrame, u64) -> !;
+pub unsafe trait HandlerType {
+    fn to_virt_addr(self) -> VirtAddr;
+}
 
+#[repr(transparent)]
+pub struct VirtAddr(u64);
+
+impl VirtAddr {
+    pub fn new(addr: u64) -> VirtAddr {
+        VirtAddr(addr)
+    }
+}
+
+
+pub type HandlerFunc = extern "C" fn(InterruptStackFrame) -> ! ;
+unsafe impl HandlerType for HandlerFunc {
+    fn to_virt_addr(self) -> VirtAddr {
+        VirtAddr(self as u64)
+    }
+}
+pub type HandlerFuncWithErr = extern "C" fn(InterruptStackFrame, u64) -> !;
+unsafe impl HandlerType for HandlerFuncWithErr {
+    fn to_virt_addr(self) -> VirtAddr {
+        VirtAddr(self as u64)
+    }
+}

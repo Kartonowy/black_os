@@ -4,31 +4,24 @@
 #![test_runner(black_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use core::panic::PanicInfo;
 use black_os::divide_by_zero;
 use black_os::println;
+use core::panic::PanicInfo;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     println!("Hello world");
     black_os::init();
 
-
-    unsafe {
-        *(0xdeadbeef as *mut u8) = 42
-    }
-   
+/*     unsafe { *(0xdeadbeef as *mut u8) = 42 } */
+    divide_by_zero();
 
     #[cfg(test)]
     test_main();
 
-
     println!("id didnt crash?!?!");
     loop {}
 }
-
-
-
 
 #[cfg(not(test))]
 #[panic_handler]
