@@ -1,7 +1,37 @@
 use x86_64::instructions::segmentation;
 use x86_64::registers::segmentation::Segment;
 use x86_64::structures::gdt::SegmentSelector;
+use x86_64::structures::idt::InterruptStackFrame;
 use x86_64::PrivilegeLevel;
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum ExceptionType {
+    DivisionError = 0x0,
+    Debug = 0x1,
+    NonMaskableInterrupt = 0x2,
+    Breakpoint = 0x3,
+    Overflow = 0x4,
+    BoundRangeExceeded = 0x5,
+    InvalidOpcode = 0x6,
+    DeviceNotAvailable = 0x7,
+    DoubleFault = 0x8,
+    InvalidTSS = 0xa,
+    SegmentNotPresent = 0xb,
+    StackSegmentFault = 0xc,
+    GeneralProtectionFault = 0xd,
+    PageFault = 0xe,
+    X87FloatingPointException = 0x10,
+    AlignmentCheck = 0x11,
+    MachineCheck = 0x12,
+    SIMDFloatingPointException = 0x13,
+    VirtualizationException = 0x14,
+    ControlProtectionException = 0x15,
+    HypervisorInjectionException = 0x1c,
+    VMMCommunicationException = 0x1d,
+    SecurityException = 0x1e,
+}
 
 #[repr(C, packed)]
 pub struct Idt([Entry; 16]);
@@ -11,7 +41,7 @@ impl Idt {
         Idt([Entry::missing(); 16])
     }
 
-    pub fn set_handler(&mut self, entry: u8, handler: HandlerFunc) -> &mut EntryOptions {
+    pub fn set_handler(&mut self, entry: ExceptionType, handler: HandlerFunc) -> &mut EntryOptions {
         self.0[entry as usize] = Entry::new(segmentation::CS::get_reg(), handler);
         let options_ptr = core::ptr::addr_of_mut!(self.0[entry as usize].options);
         unsafe {
@@ -107,4 +137,5 @@ impl Entry {
 }
 
 pub type HandlerFunc = extern "C" fn() -> !;
+pub type HandlerFuncWithErr = extern "C" fn(InterruptStackFrame, u64) -> !;
 
