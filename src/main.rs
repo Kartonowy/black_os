@@ -6,8 +6,8 @@
 
 use black_os::divide_by_zero;
 use black_os::println;
-use x86_64::instructions::interrupts::int3;
 use core::panic::PanicInfo;
+use x86_64::instructions::interrupts::int3;
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {

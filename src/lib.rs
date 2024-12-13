@@ -7,6 +7,7 @@
 
 use core::panic::PanicInfo;
 
+pub mod gdt;
 pub mod interrupts;
 pub mod serial;
 pub mod vga_buffer;
@@ -53,7 +54,7 @@ pub fn test_panic_handler(_info: &PanicInfo) -> ! {
 pub extern "C" fn _start() -> ! {
     test_main();
 
-    interrupts::init();
+    init();
 
     divide_by_zero();
 
@@ -76,6 +77,7 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 }
 
 pub fn init() {
+    gdt::init();
     interrupts::init();
 }
 
