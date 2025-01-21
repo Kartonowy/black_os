@@ -13,6 +13,15 @@ pub mod serial;
 pub mod vga_buffer;
 extern crate bit_field;
 
+pub fn init() {
+    gdt::init();
+    interrupts::init();
+    unsafe {
+        interrupts::PICS.lock().initialize();
+    }
+    x86_64::instructions::interrupts::enable();
+}
+
 pub trait Testable {
     fn run(&self) -> ();
 }
@@ -74,11 +83,6 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
         let mut port = Port::new(0xf4);
         port.write(exit_code as u32);
     }
-}
-
-pub fn init() {
-    gdt::init();
-    interrupts::init();
 }
 
 pub fn divide_by_zero() {

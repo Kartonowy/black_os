@@ -14,13 +14,14 @@ pub extern "C" fn _start() -> ! {
     println!("Hello world");
     black_os::init();
 
-    unsafe { *(0xdeadbeef as *mut u8) = 42 }
-
     #[cfg(test)]
     test_main();
 
     println!("id didnt crash?!?!");
-    loop {}
+    loop {
+        use black_os::print;
+        print!("-");
+    }
 }
 
 #[cfg(not(test))]
