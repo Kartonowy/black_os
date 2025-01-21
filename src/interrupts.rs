@@ -52,7 +52,8 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     print!(".");
 
     unsafe {
-        PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
 }
 
