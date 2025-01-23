@@ -18,17 +18,14 @@ pub extern "C" fn _start() -> ! {
     test_main();
 
     println!("id didnt crash?!?!");
-    loop {
-        use black_os::print;
-        print!("-");
-    }
+    black_os::hlt_loop();
 }
 
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     println!("{}", _info);
-    loop {}
+    black_os::hlt_loop();
 }
 
 #[cfg(test)]
